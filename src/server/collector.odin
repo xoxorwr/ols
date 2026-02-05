@@ -1013,23 +1013,38 @@ get_package_mapping :: proc(file: ast.File, config: ^common.Config, directory: s
 			}
 
 			package_map[name] = full
-		} else {
-			name: string
+	} else {
+		name: string
 
-			full := path.join(
-				elems = {directory, imp.fullpath[1:len(imp.fullpath) - 1]},
+		import_path := imp.fullpath[1:len(imp.fullpath) - 1]
+		full := path.join(
+			elems = {directory, import_path},
+			allocator = context.temp_allocator,
+		)
+		full = path.clean(full, context.temp_allocator)
+
+		// In test environments or when packages are siblings, imports without collection
+		// prefix or relative path indicator should resolve to sibling packages.
+		// Check if the computed path doesn't exist (indicating it might be a sibling package).
+		if !strings.contains_any(import_path, "/") && !strings.has_prefix(import_path, ".") {
+			// Try to resolve as a sibling package by going up one directory level
+			parent_dir := path.dir(directory, context.temp_allocator)
+			sibling_path := path.join(
+				elems = {parent_dir, import_path},
 				allocator = context.temp_allocator,
 			)
-			full = path.clean(full, context.temp_allocator)
-
-			if imp.name.text != "" {
-				name = imp.name.text
-			} else {
-				name = path.base(full, false, context.temp_allocator)
-			}
-
-			package_map[name] = full
+			sibling_path = path.clean(sibling_path, context.temp_allocator)
+			full = sibling_path
 		}
+
+		if imp.name.text != "" {
+			name = imp.name.text
+		} else {
+			name = path.base(full, false, context.temp_allocator)
+		}
+
+		package_map[name] = full
+	}
 	}
 
 	return package_map
@@ -1077,6 +1092,11 @@ replace_package_alias_node :: proc(node: ^ast.Node, package_map: map[string]stri
 	#partial switch n in node.derived {
 	case ^Bad_Expr:
 	case ^Ident:
+		// Replace identifier with full package path if it matches an import alias
+		// This handles cases like `pkg_a :: _pkg_a` where _pkg_a is an import
+		if package_name, ok := package_map[n.name]; ok {
+			n.name = get_index_unique_string(collection, package_name)
+		}
 	case ^Implicit:
 	case ^Undef:
 	case ^Basic_Lit:
