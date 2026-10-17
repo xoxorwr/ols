@@ -1416,7 +1416,11 @@ build_string_node :: proc(node: ^ast.Node, builder: ^strings.Builder, remove_poi
 			build_string(n.specialization, builder, remove_pointers)
 		}
 	case ^ast.Helper_Type:
-		build_string(n.type, builder, remove_pointers)
+		if n.type != nil {
+			build_string(n.type, builder, remove_pointers)
+		} else {
+			strings.write_string(builder, "#type")
+		}
 	case ^ast.Distinct_Type:
 		build_string(n.type, builder, remove_pointers)
 	case ^ast.Poly_Type:

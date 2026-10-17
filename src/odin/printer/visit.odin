@@ -1960,7 +1960,9 @@ visit_expr :: proc(
 		if v.tok == .Hash {
 			document = cons(document, text("#type"))
 		}
-		document = cons_with_nopl(document, visit_expr(p, v.type))
+		if v.type != nil {
+			document = cons_with_nopl(document, visit_expr(p, v.type))
+		}
 	case ^ast.Matrix_Type:
 		document = cons(text_position(p, "matrix", v.pos), text("["), visit_expr(p, v.row_count), text(","))
 		document = cons_with_opl(document, visit_expr(p, v.column_count))

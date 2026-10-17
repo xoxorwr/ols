@@ -2061,7 +2061,10 @@ internal_resolve_type_expression :: proc(ast_context: ^AstContext, node: ^ast.Ex
 	case ^ast.Tag_Expr:
 		return internal_resolve_type_expression(ast_context, v.expr, out)
 	case ^ast.Helper_Type:
-		return internal_resolve_type_expression(ast_context, v.type, out)
+		if v.type != nil {
+			return internal_resolve_type_expression(ast_context, v.type, out)
+		}
+		return false
 	case ^ast.Ellipsis:
 		out.range = common.get_token_range(v.node, ast_context.file.src)
 		out.type = .Type
